@@ -1,0 +1,74 @@
+
+---
+# 1️⃣ Create a Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: full-access-sa
+  namespace: default
+
+---
+# 2️⃣ Create a ClusterRole with full access
+# (same as cluster-admin role)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: full-access-role
+rules:
+- apiGroups: ["*"]         # All API groups
+  resources: ["*"]         # All resources
+  verbs: ["*"]             # All actions (get, list, create, delete, etc.)
+
+---
+# 3️⃣ Bind the ClusterRole to the Service Account
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: full-access-binding
+subjects:
+- kind: ServiceAccount
+  name: full-access-sa
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: full-access-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: apps/v1
+kind: Deployment # Kubernetes resource kind we are creating
+metadata:
+  name: boardgame-deployment
+spec:
+  selector:
+    matchLabels:
+      app: boardgame
+  replicas: 2 # Number of replicas that will be created for this deployment
+  template:
+    metadata:
+      labels:
+        app: boardgame
+    spec:
+      serviceAccountName: full-access-sa
+      containers:
+        - name: boardgame
+          image: kuchalakantikris/boardgame902:latest # Image that will be used to containers in the cluster
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080 # The port that the container is running on in the cluster
+
+
+---
+
+apiVersion: v1 # Kubernetes API version
+kind: Service # Kubernetes resource kind we are creating
+metadata: # Metadata of the resource kind we are creating
+  name: boardgame-ssvc
+spec:
+  selector:
+    app: boardgame
+  ports:
+    - protocol: "TCP"
+      port: 80
+      targetPort: 8080 
+  type: LoadBalancer # type of the service.
